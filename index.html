@@ -1,0 +1,551 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>عدّاد التسريح</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Reem+Kufi:wght@500;600;700&display=swap">
+<style>
+/* Layout: one narrow RTL column. Big days-left figure, then a 36-month field map, then quiet lists. */
+:root {
+  --bg: #ECEFE4;
+  --surface: #F6F8EF;
+  --fg: #1C2517;
+  --muted: #5B6652;
+  --line: #CDD4BF;
+  --accent: #4C6A2A;
+  --accent-soft: #D5E0BE;
+  --brass: #A8761A;
+  --display: "Reem Kufi", "Segoe UI", Tahoma, sans-serif;
+  --body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  --empty: #D9DFCB;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11160E; --surface: #1A2115; --fg: #E7EBD8; --muted: #97A28A; --line: #2E3827;
+    --accent: #A4C25F; --accent-soft: #2C3A1E; --brass: #DDA93F; --empty: #262F20;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11160E; --surface: #1A2115; --fg: #E7EBD8; --muted: #97A28A; --line: #2E3827;
+  --accent: #A4C25F; --accent-soft: #2C3A1E; --brass: #DDA93F; --empty: #262F20;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.7;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.app { max-width: 560px; margin-inline: auto; display: flex; flex-direction: column; gap: 36px; }
+h1, h2 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.25rem; }
+p { margin: 0; }
+button, input, textarea { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.top h1 { font-size: 1.05rem; color: var(--muted); letter-spacing: 0; }
+.today { font-size: 0.875rem; color: var(--muted); }
+
+.hero { display: flex; flex-direction: column; gap: 6px; }
+.hero .lead { color: var(--muted); font-size: 1rem; }
+.big { font-family: var(--display); font-weight: 700; font-size: clamp(5rem, 28vw, 8.5rem); line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.big small { font-size: 1.5rem; font-weight: 500; color: var(--fg); margin-inline-start: 10px; }
+.sub { font-size: 1rem; }
+.sub b { font-family: var(--display); font-weight: 600; color: var(--brass); font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+
+.bar { height: 10px; border-radius: 999px; background: var(--empty); overflow: hidden; margin-top: 10px; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .8s ease; }
+
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-block: 1px solid var(--line); }
+.stat { padding: 14px 4px; text-align: center; min-width: 0; }
+.stat + .stat { border-inline-start: 1px solid var(--line); }
+.stat b { display: block; font-family: var(--display); font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.stat span { font-size: 0.75rem; color: var(--muted); }
+
+.map { display: flex; flex-direction: column; gap: 14px; }
+.map-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.map-head span { font-size: 0.8125rem; color: var(--muted); }
+.row-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 4px; letter-spacing: 0.02em; }
+.cells { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; }
+.cell { aspect-ratio: 1; max-width: 100%; border-radius: 4px; background: var(--empty); position: relative; }
+.cell.done { background: var(--accent); }
+.cell.now {
+  background: linear-gradient(to left, var(--accent) calc(var(--p) * 1%), var(--empty) 0);
+  outline: 2px solid var(--brass); outline-offset: 1px;
+}
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.8125rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; background: var(--empty); display: inline-block; }
+.legend .l-done { background: var(--accent); }
+.legend .l-now { outline: 2px solid var(--brass); outline-offset: 1px; background: var(--accent-soft); }
+
+.visit { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; gap: 8px; }
+.visit p { font-size: 0.9375rem; }
+.msg { background: var(--surface); border-radius: 14px; padding: 22px 20px; display: flex; flex-direction: column; gap: 14px; border: 1px solid var(--line); }
+.msg .q { font-family: var(--display); font-size: 1.375rem; line-height: 1.6; font-weight: 500; text-wrap: balance; min-height: 4.8em; display: flex; align-items: center; }
+.msg .kicker { font-size: 0.8125rem; color: var(--brass); font-weight: 600; letter-spacing: 0.03em; }
+.btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; padding: 6px 16px; cursor: pointer; align-self: flex-start; font-weight: 500; }
+.btn:hover { background: var(--accent-soft); }
+.btn.solid { background: var(--accent); color: var(--bg); }
+.btn.solid:hover { background: var(--accent); filter: brightness(1.08); }
+
+section { display: flex; flex-direction: column; gap: 14px; }
+.hint { font-size: 0.875rem; color: var(--muted); }
+
+.miles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.miles li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.miles li:last-child { border-bottom: 0; }
+.dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); }
+.miles .ok .dot { background: var(--accent); border-color: var(--accent); }
+.miles .next .dot { border-color: var(--brass); }
+.miles .nm { font-weight: 500; }
+.miles .dt { font-size: 0.8125rem; color: var(--muted); font-variant-numeric: tabular-nums; text-align: end; }
+.miles .next .dt { color: var(--brass); font-weight: 600; }
+
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.checks label { display: flex; gap: 12px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.checks li:last-child label { border-bottom: 0; }
+.checks input { width: 22px; height: 22px; accent-color: var(--accent); flex: none; margin: 0; }
+.checks input:checked + span { color: var(--muted); text-decoration: line-through; }
+.count { font-family: var(--display); color: var(--accent); font-size: 1rem; }
+.head-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+
+.lessons { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.lessons li { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.lessons .t { min-width: 0; overflow-wrap: anywhere; }
+.tag { display: inline-block; font-size: 0.6875rem; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); margin-inline-end: 8px; vertical-align: middle; }
+.del { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 2px 8px; font-size: 1.125rem; line-height: 1; border-radius: 6px; flex: none; }
+.del:hover { color: var(--brass); }
+.add { display: flex; gap: 8px; }
+.add input, .goal textarea, .dates input {
+  flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+}
+.goal textarea { resize: vertical; min-height: 84px; width: 100%; }
+
+.tips { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; counter-reset: none; }
+.tips li { padding: 12px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 6px minmax(0, 1fr); gap: 12px; align-items: start; }
+.tips li::before { content: ""; width: 6px; height: 6px; margin-top: 0.75em; border-radius: 50%; background: var(--brass); }
+.tips li:last-child { border-bottom: 0; }
+
+details { border-top: 1px solid var(--line); padding-top: 16px; }
+summary { cursor: pointer; color: var(--muted); font-size: 0.9375rem; }
+.dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.dates label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8125rem; color: var(--muted); min-width: 0; }
+.dates + .btn { margin-top: 14px; }
+
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+@media (max-width: 380px) { .dates { grid-template-columns: 1fr; } }
+</style>
+
+<div class="app" dir="rtl" lang="ar">
+
+  <header class="top">
+    <h1>عدّاد التسريح</h1>
+    <span class="today" id="today"></span>
+  </header>
+
+  <div class="hero">
+    <p class="lead" id="lead">فاضل على التسريح</p>
+    <div class="big"><span id="left">0</span><small>يوم</small></div>
+    <p class="sub" id="subRun">عدّيت <b id="pct">0%</b> من المدة</p>
+    <p class="sub" id="subPre" hidden>مدة الخدمة <b id="preTotal">0</b> يوم. العدّاد هيبدأ يحسب التقدم من أول يوم.</p>
+    <div class="bar" role="progressbar" aria-label="نسبة المدة اللي عدّت" aria-valuemin="0" aria-valuemax="100" id="barA"><i id="bar"></i></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b id="sPassed">0</b><span>يوم عدّى</span></div>
+    <div class="stat"><b id="sWeeks">0</b><span>أسبوع فاضل</span></div>
+    <div class="stat"><b id="sMonths">0</b><span>شهر فاضل</span></div>
+    <div class="stat"><b id="sTotal">0</b><span>إجمالي الأيام</span></div>
+  </div>
+
+  <section class="visit">
+    <h2>من آخر زيارة</h2>
+    <p id="visitText"></p>
+  </section>
+
+  <section>
+    <div class="head-row"><h2>الإجازة الجاية</h2><span class="count" id="leaveLeft"></span></div>
+    <div class="add"><input type="date" id="leaveDate" aria-label="تاريخ الإجازة الجاية"></div>
+    <p class="hint" id="leaveHint"></p>
+  </section>
+
+  <div class="map">
+    <div class="map-head"><h2>خريطة الشهور</h2><span id="mapNote"></span></div>
+    <div id="rows"></div>
+    <div class="legend">
+      <span><i class="l-done"></i>شهر خلص</span>
+      <span><i class="l-now"></i>الشهر الحالي</span>
+      <span><i></i>لسه جاي</span>
+    </div>
+  </div>
+
+  <div class="msg">
+    <span class="kicker">كلمة النهارده</span>
+    <p class="q" id="quote"></p>
+    <button class="btn" id="nextQuote" type="button">كلمة تانية</button>
+  </div>
+
+  <section>
+    <h2>محطات الطريق</h2>
+    <ul class="miles" id="miles"></ul>
+  </section>
+
+  <section>
+    <div class="head-row"><h2>أنشطة لحد الإجازة الجاية</h2><span class="count" id="actCount"></span></div>
+    <p class="hint">أنشطة تنفع تعملها في الوحدة من غير موبايل ولا نت. علّم على اللي هتلتزم بيه.</p>
+    <ul class="checks" id="acts"></ul>
+  </section>
+
+  <section class="goal">
+    <h2>حصيلة الفترة اللي فاتت</h2>
+    <p class="hint">لما تفتح الصفحة في الإجازة، اكتب عملت إيه في الفترة اللي فاتت وإيه اللي عايز تحسّنه.</p>
+    <textarea id="review" placeholder="الفترة اللي فاتت عملت..." aria-label="حصيلة الفترة اللي فاتت"></textarea>
+  </section>
+
+  <section>
+    <div class="head-row"><h2>في الإجازة</h2><span class="count" id="leaveCount"></span></div>
+    <p class="hint">الإجازة قصيرة. اتشطب منها اللي تقدر عليه.</p>
+    <ul class="checks" id="leaveList"></ul>
+  </section>
+
+  <section>
+    <div class="head-row"><h2>قبل ما أرجع الوحدة</h2><span class="count" id="backCount"></span></div>
+    <p class="hint">حسب اللي بتسمح بيه الوحدة.</p>
+    <ul class="checks" id="backList"></ul>
+    <button class="btn" id="newLeave" type="button">إجازة جديدة، صفّر القايمتين</button>
+  </section>
+
+  <section>
+    <h2>كلمات تاخدها معاك</h2>
+    <p class="hint">صوّرها سكرين شوت قبل ما ترجع، وتبقى معاك لحد الإجازة الجاية.</p>
+    <ul class="tips" id="carry"></ul>
+  </section>
+
+  <section>
+    <h2>اللي اتعلمته</h2>
+    <p class="hint">اكتب أي درس أو موقف فرق معاك. هيفضل محفوظ على جهازك.</p>
+    <ul class="lessons" id="lessons"></ul>
+    <form class="add" id="lessonForm">
+      <input id="lessonInput" type="text" placeholder="اتعلمت إن..." maxlength="200" autocomplete="off">
+      <button class="btn solid" type="submit">أضف</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>نصايح للمدة الباقية</h2>
+    <ul class="tips">
+      <li>فكّر في الأسبوع الجاي بس. ٣ سنين كتير على الدماغ، لكن أسبوع تقدر تعدّيه.</li>
+      <li>خلّي لك روتين ثابت في النوم والأكل والرياضة. الجسم المنتظم بيستحمل أكتر.</li>
+      <li>اتعلم مهارة واحدة بجد، نص ساعة كل يوم، سواء برمجة أو لغة أو حرفة. بعد سنة هتفرق.</li>
+      <li>وفّر مبلغ ثابت ولو صغير من أي فلوس توصلك. هتحتاجها يوم التسريح.</li>
+      <li>اختار صحابك كويس وابعد عن المشاكل. سمعتك الكويسة بتسهّل عليك كل حاجة.</li>
+      <li>كلّم أهلك كل أسبوع. الصوت المعروف بيشحنك أكتر من أي حاجة.</li>
+      <li>اهتم بصحتك وبلّغ بدري عن أي وجع. التأجيل بيكبّر الحاجات الصغيرة.</li>
+      <li>اكتب هدفك بعد التسريح وراجعه كل شهر. الهدف الواضح بيخلي الوقت له معنى.</li>
+    </ul>
+  </section>
+
+  <section class="goal">
+    <h2>هدفي بعد التسريح</h2>
+    <textarea id="goal" placeholder="أول حاجة هعملها، وشغل أو دراسة أو مشروع عايز أوصل له..." aria-label="هدفي بعد التسريح"></textarea>
+  </section>
+
+  <details>
+    <summary>تعديل التواريخ</summary>
+    <div class="dates">
+      <label for="startDate">تاريخ البداية<input type="date" id="startDate"></label>
+      <label for="endDate">تاريخ التسريح<input type="date" id="endDate"></label>
+    </div>
+    <button class="btn solid" id="saveDates" type="button">حفظ التواريخ</button>
+  </details>
+
+</div>
+
+<script>
+(function () {
+  var DEFAULTS = { start: "2027-01-01", end: "2028-01-03" };
+  var QUOTES = [
+    "كل يوم بيخلص بيقرّبك من الباب اللي هتخرج منه مرفوع الراس.",
+    "الوقت هيعدّي في كل الأحوال. اختار تعدّيه بإيه.",
+    "مش لازم تفكر في ٣ سنين. فكّر في النهارده بس.",
+    "اللي بيتحمّل دلوقتي هيحكي بفخر بعدين.",
+    "التعب بيعدّي، والخبرة اللي خدتها بتفضل معاك.",
+    "إنت مش مستني الوقت يخلص. إنت بتبني نفسك جواه.",
+    "الأيام التقيلة بتعدّي زي الخفيفة بالظبط، وبتعلّمك أكتر.",
+    "كل صباح فرصة تعدّي يوم أحسن من امبارح.",
+    "الرجولة إنك تكمّل حتى لما تكون مش عايز.",
+    "أهلك مستنيينك، وإنت كل يوم بتبقى أقرب لهم.",
+    "ابني عادة صغيرة كل يوم، وهتخرج من هنا إنسان أقوى.",
+    "مفيش حد بيخرج من التجربة دي زي ما دخل. خلّي التغيير للأحسن.",
+    "خطوة النهارده وخطوة بكرة. كده بتوصل.",
+    "اللي بيستحمل ضغط الجيش هيهون عليه ضغط أي شغل بعد كده.",
+    "تخيّل اليوم اللي هتلبس فيه هدومك المدني وتضحك. هو جاي.",
+    "إنت أقوى من اللحظة الصعبة اللي فيها دلوقتي."
+  ];
+  var ACTS = [
+    "تمارين جسم كل يوم (ضغط وبطن) بزيادة بسيطة كل أسبوع",
+    "قراءة كتاب ورقي وتلخيص صفحة منه في كراسة",
+    "حفظ ٥ كلمات إنجليزي جديدة كل يوم ومراجعتها آخر الأسبوع",
+    "حفظ جزء من القرآن أو أذكار الصباح والمساء",
+    "صلاة الفجر كل يوم في وقتها",
+    "الالتزام بالصلوات الخمس في وقتها",
+    "كتابة يوميات سطرين قبل النوم",
+    "تعلّم البرمجة على الورق: حل مسائل أو رسم فكرة مشروع",
+    "مشي أو جري خفيف في أوقات الراحة",
+    "كتابة خطة مشروعك أو شغلك بعد التسريح",
+    "تسجيل مصاريفك في كراسة ومراجعتها آخر الأسبوع",
+    "مراجعة أهدافك في أول كل أسبوع"
+  ];
+  var LEAVE = [
+    "اقعد مع أهلك وطمّنهم",
+    "كشف طبي وأسنان لو محتاج",
+    "خلّص الأوراق والبنك والحاجات المعلّقة",
+    "حوّش المبلغ الشهري",
+    "قابل صحابك المهمين",
+    "نام كفاية وكل أكل بيتي",
+    "راجع الصفحة دي واكتب الحصيلة والدروس",
+    "اختار أنشطة الفترة الجاية"
+  ];
+  var BACK = [
+    "مصحف صغير أو كتيب أذكار",
+    "كتاب أو رواية ورقية للقراءة",
+    "كراسة وأقلام وكروت مراجعة",
+    "حمّل كتب وصوتيات وكورسات تشتغل من غير نت",
+    "مستلزمات نضافة تكفي الفترة (صابون ومعجون وشامبو وشفرات)",
+    "شباشب وشرابات وهدوم داخلية زيادة",
+    "أدوية إسعاف أولي (مسكن ومطهر وبلاستر) وأدويتك الخاصة",
+    "قفل صغير لشنطتك أو دولابك",
+    "ساعة يد ومنبه",
+    "فلوس فكّة",
+    "صورة من بطاقتك وأوراقك المهمة",
+    "رقم حد من أهلك مكتوب على ورقة",
+    "سكرين شوت للكلمات التحفيزية"
+  ];
+  var ROW_NAMES = ["السنة الأولى", "السنة التانية", "السنة التالتة", "السنة الرابعة"];
+
+  function $(id) { return document.getElementById(id); }
+  function load(k, fb) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch (e) { return fb; } }
+  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function parse(s) { var p = s.split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function dn(d) { return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5); }
+  function addMonths(d, n) { return new Date(d.getFullYear(), d.getMonth() + n, d.getDate()); }
+  function clamp(x, a, b) { return Math.min(b, Math.max(a, x)); }
+  function iso(d) { var m = d.getMonth() + 1, day = d.getDate(); return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day; }
+  function fmt(d, opts) { return d.toLocaleDateString("ar-EG-u-nu-latn", opts); }
+  function num(n) { return String(n); }
+
+  var dates = load("svc-dates", DEFAULTS);
+  if (!dates || !dates.start || !dates.end) dates = DEFAULTS;
+  var today = new Date();
+  var offset = 0;
+
+  function render() {
+    var start = parse(dates.start), end = parse(dates.end);
+    var total = Math.max(1, dn(end) - dn(start));
+    var raw = dn(today) - dn(start);
+    var passed = clamp(raw, 0, total);
+    var left = total - passed;
+    var pct = passed / total * 100;
+
+    $("today").textContent = fmt(today, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    $("left").textContent = num(left);
+    $("pct").textContent = (pct >= 10 ? Math.round(pct * 10) / 10 : Math.round(pct * 10) / 10) + "%";
+    $("bar").style.width = pct.toFixed(1) + "%";
+    $("barA").setAttribute("aria-valuenow", Math.round(pct));
+    $("sPassed").textContent = num(passed);
+    $("sWeeks").textContent = num(Math.ceil(left / 7));
+    $("sMonths").textContent = (Math.round(left / 30.44 * 10) / 10).toString();
+    $("sTotal").textContent = num(total);
+
+    var pre = raw < 0;
+    $("subRun").hidden = pre; $("subPre").hidden = !pre; $("preTotal").textContent = num(total);
+    if (pre) { $("left").textContent = num(-raw); $("lead").textContent = "فاضل على بداية الخدمة"; }
+    else if (left === 0) $("lead").textContent = "مبروك، خلّصت المدة";
+    else $("lead").textContent = "فاضل على التسريح";
+
+    // month field map
+    var cells = [], i = 0, s = start;
+    while (s < end && i < 120) {
+      var e = addMonths(start, i + 1); if (e > end) e = end;
+      var span = Math.max(1, dn(e) - dn(s));
+      var p = clamp((dn(today) - dn(s)) / span, 0, 1) * 100;
+      cells.push({ p: p, done: dn(today) >= dn(e), now: dn(today) >= dn(s) && dn(today) < dn(e), s: s, e: e });
+      i++; s = addMonths(start, i);
+    }
+    var rows = $("rows"); rows.textContent = "";
+    for (var r = 0; r * 12 < cells.length; r++) {
+      var chunk = cells.slice(r * 12, r * 12 + 12);
+      var wrap = document.createElement("div"); wrap.style.marginBottom = "12px";
+      var lab = document.createElement("div"); lab.className = "row-label";
+      lab.textContent = chunk.length === 12 ? (ROW_NAMES[r] || "") : "الأيام الأخيرة";
+      var grid = document.createElement("div"); grid.className = "cells";
+      chunk.forEach(function (c) {
+        var d = document.createElement("div");
+        d.className = "cell" + (c.done ? " done" : c.now ? " now" : "");
+        if (c.now) d.style.setProperty("--p", c.p.toFixed(0));
+        d.title = fmt(c.s, { month: "long", year: "numeric" });
+        grid.appendChild(d);
+      });
+      wrap.appendChild(lab); wrap.appendChild(grid); rows.appendChild(wrap);
+    }
+    var doneCount = cells.filter(function (c) { return c.done; }).length;
+    $("mapNote").textContent = doneCount + " من " + cells.length + " شهر خلصوا";
+
+    // milestones
+    var defs = [[25, "ربع المدة"], [50, "نص المدة"], [75, "تلات تربع المدة"], [100, "يوم التسريح"]];
+    var ml = $("miles"); ml.textContent = ""; var nextSet = false;
+    defs.forEach(function (m) {
+      var dayN = Math.round(total * m[0] / 100);
+      var d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + dayN);
+      var ok = passed >= dayN, cls = ok ? "ok" : (!nextSet ? "next" : "");
+      if (!ok) nextSet = true;
+      var li = document.createElement("li"); li.className = cls;
+      var dot = document.createElement("span"); dot.className = "dot";
+      var nm = document.createElement("span"); nm.className = "nm"; nm.textContent = m[1];
+      var dt = document.createElement("span"); dt.className = "dt";
+      var rem = dayN - raw;
+      dt.textContent = fmt(d, { day: "numeric", month: "short", year: "numeric" }) + (ok ? "" : " (بعد " + rem + " يوم)");
+      li.appendChild(dot); li.appendChild(nm); li.appendChild(dt); ml.appendChild(li);
+    });
+
+    $("startDate").value = dates.start;
+    $("endDate").value = dates.end;
+  }
+
+  function showQuote() {
+    var idx = (dn(today) + offset) % QUOTES.length;
+    $("quote").textContent = QUOTES[idx];
+  }
+  $("nextQuote").addEventListener("click", function () { offset++; showQuote(); });
+
+  // checklists: saved until "new leave" resets the leave lists
+  function makeList(ulId, items, storeKey, countId) {
+    var done = load(storeKey, []);
+    var ul = $(ulId);
+    function upd() { $(countId).textContent = done.length + " / " + items.length; }
+    items.forEach(function (h, i) {
+      var li = document.createElement("li");
+      var lb = document.createElement("label");
+      var cb = document.createElement("input"); cb.type = "checkbox"; cb.id = ulId + i;
+      cb.checked = done.indexOf(i) > -1;
+      cb.addEventListener("change", function () {
+        done = done.filter(function (x) { return x !== i; });
+        if (cb.checked) done.push(i);
+        save(storeKey, done); upd();
+      });
+      var sp = document.createElement("span"); sp.textContent = h;
+      lb.appendChild(cb); lb.appendChild(sp); li.appendChild(lb); ul.appendChild(li);
+    });
+    upd();
+    return { reset: function () {
+      done = []; save(storeKey, done);
+      Array.prototype.forEach.call(ul.querySelectorAll("input"), function (c) { c.checked = false; });
+      upd();
+    } };
+  }
+  makeList("acts", ACTS, "svc-acts", "actCount");
+  var leaveListC = makeList("leaveList", LEAVE, "svc-leave-list", "leaveCount");
+  var backListC = makeList("backList", BACK, "svc-back-list", "backCount");
+  $("newLeave").addEventListener("click", function () { leaveListC.reset(); backListC.reset(); });
+
+  // review of the last period
+  $("review").value = load("svc-review", "");
+  $("review").addEventListener("input", function () { save("svc-review", $("review").value); });
+
+  // next leave countdown
+  var leaveDate = load("svc-leave", "");
+  function renderLeave() {
+    var el = $("leaveLeft"), h = $("leaveHint");
+    $("leaveDate").value = leaveDate;
+    if (!leaveDate) { el.textContent = ""; h.textContent = "اكتب تاريخ إجازتك الجاية وهتشوف فاضل كام يوم."; return; }
+    var dl = dn(parse(leaveDate)) - dn(today);
+    if (dl > 0) { el.textContent = dl + " يوم"; h.textContent = "فاضل " + dl + " يوم على الإجازة."; }
+    else if (dl === 0) { el.textContent = "النهارده"; h.textContent = "الإجازة النهارده. استمتع بيها."; }
+    else { el.textContent = ""; h.textContent = "التاريخ ده عدّى. حدّث تاريخ الإجازة الجاية."; }
+  }
+  $("leaveDate").addEventListener("change", function () { leaveDate = $("leaveDate").value; save("svc-leave", leaveDate); renderLeave(); });
+
+  // since last visit
+  var last = load("svc-last", null);
+  function visit() {
+    var start = parse(dates.start), end = parse(dates.end);
+    var total = Math.max(1, dn(end) - dn(start));
+    var p = clamp(dn(today) - dn(start), 0, total) / total * 100;
+    var el = $("visitText");
+    var gap = last && last.d ? dn(today) - dn(parse(last.d)) : -1;
+    if (gap === 0 && last.txt) { el.textContent = last.txt; return; }
+    var txt;
+    if (gap > 0) {
+      var gain = Math.max(0, p - last.p);
+      txt = "آخر مرة فتحت فيها الصفحة من " + gap + " يوم." + (gain > 0 ? " في الفترة دي زاد تقدمك " + (Math.round(gain * 10) / 10) + "% من المدة، وإنت مشغول في الوحدة." : "");
+    } else {
+      txt = "ده أول فتح للصفحة. المرة الجاية هتشوف هنا كام يوم عدّى من آخر زيارة. العدّاد بيحسب لوحده حتى لو مفتحتهوش.";
+    }
+    el.textContent = txt;
+    last = { d: iso(today), p: p, txt: txt }; save("svc-last", last);
+  }
+
+  // quotes to carry
+  function renderCarry() {
+    var ul = $("carry"); ul.textContent = "";
+    for (var k = 0; k < 5; k++) {
+      var li = document.createElement("li");
+      li.textContent = QUOTES[(dn(today) + k * 3) % QUOTES.length];
+      ul.appendChild(li);
+    }
+  }
+
+  // lessons
+  var lessons = load("svc-lessons", null);
+  if (!lessons) lessons = [
+    { t: "أصعب أسبوع كان أول أسبوع، وعدّى.", ex: true },
+    { t: "النظام اليومي بيخلي الوقت يعدّي أسرع.", ex: true }
+  ];
+  function renderLessons() {
+    var ul = $("lessons"); ul.textContent = "";
+    if (!lessons.length) {
+      var e = document.createElement("li"); e.className = "hint"; e.textContent = "لسه مفيش دروس. أول درس تكتبه هيظهر هنا.";
+      ul.appendChild(e);
+    }
+    lessons.forEach(function (l, i) {
+      var li = document.createElement("li");
+      var t = document.createElement("div"); t.className = "t";
+      if (l.ex) { var tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "مثال"; t.appendChild(tag); }
+      t.appendChild(document.createTextNode(l.t));
+      var b = document.createElement("button"); b.className = "del"; b.type = "button"; b.setAttribute("aria-label", "حذف"); b.textContent = "×";
+      b.addEventListener("click", function () { lessons.splice(i, 1); save("svc-lessons", lessons); renderLessons(); });
+      li.appendChild(t); li.appendChild(b); ul.appendChild(li);
+    });
+  }
+  $("lessonForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var v = $("lessonInput").value.trim(); if (!v) return;
+    lessons.push({ t: v }); save("svc-lessons", lessons);
+    $("lessonInput").value = ""; renderLessons();
+  });
+
+  // goal
+  $("goal").value = load("svc-goal", "");
+  $("goal").addEventListener("input", function () { save("svc-goal", $("goal").value); });
+
+  // dates
+  $("saveDates").addEventListener("click", function () {
+    var s = $("startDate").value, e = $("endDate").value;
+    if (!s || !e || parse(e) <= parse(s)) return;
+    dates = { start: s, end: e }; save("svc-dates", dates); render();
+  });
+
+  render(); showQuote(); visit(); renderLeave(); renderCarry(); renderLessons();
+})();
+</script>
+
+</body></html>
